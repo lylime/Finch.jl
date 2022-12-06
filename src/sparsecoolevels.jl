@@ -312,7 +312,7 @@ function unfurl(fbr::VirtualFiber{VirtualSparseCooLevel}, ctx, mode, ::Extrude, 
                 epilogue = begin
                     resize_body = quote end
                     writer_body = quote end
-                    my_idxs = map(ctx, (envdeferred(fbr.env)..., idx))
+                    my_idxs = map(ctx, (reverse(envdeferred(fbr.env))..., idx))
                     for n = 1:lvl.N
                         if n == lvl.N
                             resize_body = quote
