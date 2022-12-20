@@ -521,13 +521,15 @@ end
 
 function display_statement(io, mime, node::IndexNode, level)
     if node.kind === with
-        print(io, tab^level * "(\n")
-        display_statement(io, mime, node.cons, level + 1)
-        print(io, tab^level * ") where (\n")
-        display_statement(io, mime, node.prod, level + 1)
-        print(io, tab^level * ")\n")
+        print(io, tab^level * "@with begin\n")
+        while node.kind === with
+            display_statement(io, mime, node.prod, level + 1)
+            node = node.cons
+        end
+        display_statement(io, mime, node, level + 1)
+        print(io, tab^level * "end\n")
     elseif node.kind === multi
-        print(io, tab^level * "begin\n")
+        print(io, tab^level * "@multi begin\n")
         for body in node.bodies
             display_statement(io, mime, body, level + 1)
         end

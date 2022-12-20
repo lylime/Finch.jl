@@ -84,14 +84,25 @@ function (ctx::FinchParserVisitor)(ex::Expr)
         ctx2 = FinchParserVisitor(ctx.nodes, Set())
         return :($(ctx.nodes.with)($(ctx(cons)), $(ctx2(prod))))
     elseif @capture ex :block(~bodies...)
+        return ctx(:(@with($ex)))
+    elseif @capture ex :macrocall($(Symbol("@multi")), ~ln::islinenum, :block(~bodies...))
         bodies = filter(!islinenum, bodies)
         if length(bodies) == 1
-            return ctx(:($(bodies[1])))
+            return ctx(bodies[1])
         else
-            return ctx(:(@multi($(bodies...),)))
+            :($(ctx.nodes.multi)($(map(ctx, bodies)...)))
         end
-    elseif @capture ex :macrocall($(Symbol("@multi")), ~ln::islinenum, ~bodies...)
-        return :($(ctx.nodes.multi)($(map(ctx, bodies)...)))
+    elseif @capture ex :macrocall($(Symbol("@multi")), ~ln::islinenum, ~body)
+        return ctx(body)
+    elseif @capture ex :macrocall($(Symbol("@with")), ~ln::islinenum, :block(~bodies...))
+        bodies = filter(!islinenum, bodies)
+        if length(bodies) == 1
+            return ctx(bodies[1])
+        else
+            return mapfoldl(ctx, (a, b) -> :($(ctx.nodes.with)($b, $a)), bodies)
+        end
+    elseif @capture ex :macrocall($(Symbol("@with")), ~ln::islinenum, ~body)
+        return ctx(body)
     elseif @capture ex :ref(~tns, ~idxs...)
         mode = :($(ctx.nodes.reader)())
         return :($(ctx.nodes.access)($(ctx(tns)), $mode, $(map(ctx, idxs)...)))

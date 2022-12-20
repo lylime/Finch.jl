@@ -315,6 +315,33 @@ function lowerjulia_access(ctx, node, tns::Number)
     @assert node.mode.kind === reader
     tns
 end
+#=
+X1. nest everything in wheres
+2. add a pass for all returnable initialized tensors in the outer loop scope
+2 a. anything that prog initializes that it does not read
+4. all accesses become !
+3. add a pass between reads and writes
+3 a. anywhere there's 
+    cons where prod
+    and cons is reading something that prod initializes,
+    just go ahead and initialize prod, i.e. insert
+    ((cons where pass(y)) where prod)
+4. all accesses become !
+for i = auto
+    for j = auto
+        b = 0
+        x[i, j] = 1 + i
+        z[j] = a[]
+        b[] = a[] + 1
+        y[j] = b[]
+    end
+    @pass y
+    for j = auto
+        x[i, j] += y[j]
+    end
+end
+@pass x, z
+=#
 
 @kwdef struct ForLoopVisitor
     ctx

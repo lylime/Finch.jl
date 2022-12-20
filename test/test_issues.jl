@@ -35,7 +35,7 @@
         new_frontier = @fiber(d(e(false)))
         new_visited = @fiber(d(e(false)))
         B = @fiber(d(e(0)))
-        @finch @loop j k begin
+        @finch @loop j k @multi begin
             new_frontier[j] <<$(Finch.or)>>= edges[j,k] && frontier_list[k] && !(old_visited[j])
             new_visited[j] <<$(Finch.and)>>= old_visited[j] || edges[j,k] && frontier_list[k] && !(old_visited[j])
             B[j] += edges[j,k] && frontier_list[k] && old_num_paths[k] && !(old_visited[j])
