@@ -51,8 +51,8 @@ IndexNotation.isliteral(::Dimensionalize) =  false
 
 struct DimensionalizeStyle end
 
-Base.show(io, ex::Dimensionalize) = Base.show(io, MIME"text/plain", ex)
-function Base.show(io::IO, mime::MIME"text/plain", ex::Dimensionalize)
+Base.show(io::IO, ex::Dimensionalize) = Base.show(io, MIME"text/plain", ex)
+function Base.show(io::IO, mime::Type{MIME"text/plain"}, ex::Dimensionalize)
     print(io, "Dimensionalize(")
     print(io, ex.body)
     print(io, ")")
@@ -114,6 +114,8 @@ function (ctx::DeclareDimensions)(node::IndexNode, dim)
         return with(cons, prod)
     elseif node.kind === protocol
         return protocol(ctx(node.idx, dim), node.mode)
+    elseif node.kind === virtual
+        return ctx(node.val, dim)
     elseif istree(node)
         return similarterm(node, operation(node), map(arg->ctx(arg, nodim), arguments(node)))
     else

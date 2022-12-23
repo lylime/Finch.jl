@@ -7,78 +7,14 @@ function register(algebra)
     end)
 end
 
-#struct Lifetime <: IndexNode
-#    body
-#end
-#
-#lifetime(arg) = Lifetime(arg)
-#
-#SyntaxInterface.istree(::Lifetime) = true
-#SyntaxInterface.arguments(ex::Lifetime) = [ex.body]
-#SyntaxInterface.operation(::Lifetime) = lifetime
-#SyntaxInterface.similarterm(::Type{<:IndexNode}, ::typeof(lifetime), args) = Lifetime(args...)
-#
-#IndexNotation.isliteral(::Lifetime) =  false
-#
-#struct LifetimeStyle end
-#
-#Base.show(io, ex::Lifetime) = Base.show(io, MIME"text/plain", ex)
-#function Base.show(io::IO, mime::MIME"text/plain", ex::Lifetime)
-#    print(io, "Lifetime(")
-#    print(io, ex.body)
-#    print(io, ")")
-#end
-#
-#(ctx::Stylize{LowerJulia})(node::Lifetime) = result_style(LifetimeStyle(), ctx(node.body))
-#combine_style(a::DefaultStyle, b::LifetimeStyle) = LifetimeStyle()
-#combine_style(a::ThunkStyle, b::LifetimeStyle) = ThunkStyle()
-#combine_style(a::LifetimeStyle, b::LifetimeStyle) = LifetimeStyle()
-#
-#function (ctx::LowerJulia)(prgm::Lifetime, ::LifetimeStyle)
-#    prgm = prgm.body
-#    quote
-#        $(contain(ctx) do ctx_3
-#            prgm = Initialize(ctx = ctx_3)(prgm)
-#            ctx_3(prgm)
-#        end)
-#        $(contain(ctx) do ctx_3
-#            prgm = Finalize(ctx = ctx_3)(prgm)
-#            :(($(map(getresults(prgm)) do tns
-#                :($(getname(tns)) = $(ctx_3(tns)))
-#            end...), ))
-#        end)
-#    end
-#end
-
 function execute_code(ex, T, algebra = DefaultAlgebra())
     prgm = nothing
     code = contain(LowerJulia(algebra = algebra)) do ctx
-        quote
-            $(begin
-                prgm = virtualize(ex, T, ctx)
-                #The following call separates tensor and index names from environment symbols.
-                #TODO we might want to keep the namespace around, and/or further stratify index
-                #names from tensor names
-                contain(ctx) do ctx_2
-                    prgm = TransformSSA(Freshen())(prgm)
-                    prgm = ThunkVisitor(ctx_2)(prgm) #TODO this is a bit of a hack.
-                    (prgm, dims) = dimensionalize!(prgm, ctx_2)
-                    prgm = Initialize(ctx = ctx_2)(prgm)
-                    prgm = ThunkVisitor(ctx_2)(prgm) #TODO this is a bit of a hack.
-                    prgm = simplify(prgm, ctx_2)
-                    ctx_2(prgm)
-                end
-            end)
-            $(contain(ctx) do ctx_2
-                prgm = Finalize(ctx = ctx_2)(prgm)
-                :(($(map(getresults(prgm)) do acc
-                    @assert acc.tns.kind === virtual
-                    name = getname(acc)
-                    tns = trim!(acc.tns.val, ctx_2)
-                    :($name = $(ctx_2(tns)))
-                end...), ))
-            end)
-        end
+        prgm = virtualize(ex, T, ctx)
+        prgm = TransformSSA(Freshen())(prgm)
+        prgm = with(retuple(map(acc -> access(acc.tns, reader()), getresults(prgm))...), prgm)
+        prgm = multi(Dimensionalize(pass()), prgm)
+        ctx(prgm)
     end
     code = quote
         @inbounds begin

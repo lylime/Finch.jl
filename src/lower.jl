@@ -210,6 +210,13 @@ function (ctx::LowerJulia)(root::IndexNode, ::DefaultStyle)
                 res
             end)
         end
+    elseif root.kind === retuple
+        :(($(map(root.tnss) do acc
+            @assert acc.tns.kind === virtual
+            name = getname(acc)
+            tns = trim!(acc.tns.val, ctx)
+            :($name = $(ctx(tns)))
+        end...), ))
     elseif root.kind === multi
         thunk = Expr(:block)
         for body in root.bodies

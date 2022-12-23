@@ -30,7 +30,7 @@
             ]
                 ref = @fiber sl(e(false))
                 res = @fiber sl(e(false))
-                dropzeros!(ref, arr)
+                dropdefaults!(ref, arr)
                 tmp = Fiber(inner())
                 @finch @loop i tmp[i] = ref[i]
                 @finch @loop i res[i] = tmp[i]
@@ -54,7 +54,7 @@
                 ]
                     ref = @fiber sc{2}(e(false))
                     res = @fiber sc{2}(e(false))
-                    dropzeros!(ref, arr)
+                    dropdefaults!(ref, arr)
                     tmp = Fiber(outer())
                     @finch @loop i j tmp[i, j] = ref[i, j]
                     @finch @loop i j res[i, j] = tmp[i, j]

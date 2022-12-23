@@ -160,7 +160,6 @@ function base_rules(alg, ctx)
         #TODO we probably can just drop modes from pass
         (@rule pass(~a..., access(~b, updater(modify())), ~c...) => pass(a..., c...)),
 
-
         (@rule loop(~i, pass(~a...)) => pass(a...)),
         (@rule chunk(~i, ~a, pass(~b...)) => pass(b...)),
         (@rule with(pass(~a...), ~b) => pass(a...)),

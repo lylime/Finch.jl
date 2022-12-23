@@ -12,6 +12,13 @@ Base.:(==)(a::PassInstance, b::PassInstance) = Set([a.tnss...]) == Set([b.tnss..
 
 @inline pass_instance(tnss...) = PassInstance(tnss)
 
+struct RetupleInstance{Tnss<:Tuple} <: IndexNodeInstance
+    tnss::Tnss
+end
+Base.:(==)(a::RetupleInstance, b::RetupleInstance) = Set([a.tnss...]) == Set([b.tnss...])
+
+@inline retuple_instance(tnss...) = RetupleInstance(tnss)
+
 struct IndexInstance{name} <: IndexNodeInstance end
 
 @inline index_instance(name) = IndexInstance{name}()

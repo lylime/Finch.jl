@@ -17,6 +17,7 @@ module IndexNotation
     export protocol
     export sieve
     export IndexNode, value, isvalue
+    export retuple
 
     export Follow, follow
     export Walk, walk

@@ -29,7 +29,7 @@ enum is used to differentiate which kind of node is represented.
     chunk    = 16ID | IS_TREE | IS_STATEFUL
     sieve    = 17ID | IS_TREE | IS_STATEFUL
     pass     = 18ID | IS_TREE | IS_STATEFUL
-    lifetime = 19ID | IS_TREE | IS_STATEFUL
+    retuple  = 19ID | IS_TREE | IS_STATEFUL
 end
 
 """
@@ -172,14 +172,12 @@ Finch AST statement that initializes, finalizes, and returns each tensor in `tns
 """
 pass
 
-#TODO figure this one out already
 """
-    lifetime(body)
+    retuple(tnss...)
 
-Finch AST statement that initializes and finalizes all results in `body`. Most
-finch programs are wrapped by an outer `lifetime`.
+Finch AST statement that returns the tensors to the user as a result tuple.
 """
-lifetime
+retuple
 
 """
     IndexNode
@@ -297,6 +295,8 @@ function IndexNode(kind::IndexHead, args::Vector)
         end
     elseif kind === pass
         return IndexNode(pass, nothing, nothing, args)
+    elseif kind === retuple
+        return IndexNode(retuple, nothing, nothing, args)
     elseif kind === reader
         if length(args) == 0
             return IndexNode(kind, nothing, nothing, IndexNode[])
@@ -428,11 +428,16 @@ function Base.getproperty(node::IndexNode, sym::Symbol)
             error("type IndexNode(assign, ...) has no property $sym")
         end
     elseif node.kind === pass
-        #TODO move op into updater
         if sym === :tnss
             return node.children
         else
             error("type IndexNode(pass, ...) has no property $sym")
+        end
+    elseif node.kind === retuple
+        if sym === :tnss
+            return node.children
+        else
+            error("type IndexNode(retuple, ...) has no property $sym")
         end
     else
         error("type IndexNode has no property $sym")
@@ -451,6 +456,31 @@ function Finch.getunbound(ex::IndexNode)
     else
         return []
     end
+end
+
+function Base.show(io::IO, node::IndexNode) 
+    print(io, node.kind)
+    print(io, "(")
+    if node.kind === value
+        print(io, node.val)
+        if node.type !== Any
+            print(io, "::")
+            print(io, node.type)
+        end
+    elseif node.kind === literal
+        print(io, node.val)
+    elseif node.kind === index
+        print(io, ":")
+        print(io, node.name)
+    elseif node.kind === virtual
+        show(io, node.val)
+    else
+        for (i, arg) in enumerate(arguments(node))
+            i != 1 && print(io, ", ")
+            show(io, arg)
+        end
+    end
+    print(io, ")")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", node::IndexNode) 
@@ -587,6 +617,16 @@ function display_statement(io, mime, node::IndexNode, level)
             display_expression(io, mime, last(arguments(node)))
         end
         print(io, ")")
+    elseif node.kind === retuple
+        print(io, tab^level * "(;")
+        for tns in arguments(node)[1:end-1]
+            display_expression(io, mime, tns)
+            print(io, ", ")
+        end
+        if length(arguments(node)) >= 1
+            display_expression(io, mime, last(arguments(node)))
+        end
+        print(io, ")")
     else
         error("unimplemented")
     end
@@ -607,6 +647,8 @@ function Base.:(==)(a::IndexNode, b::IndexNode)
         end
     elseif a.kind === pass
         return b.kind === pass && Set(a.tnss) == Set(b.tnss) #TODO This feels... not quite right
+    elseif a.kind === retuple
+        return b.kind === retuple && Set(a.tnss) == Set(b.tnss) #TODO This feels... not quite right
     elseif istree(a)
         return a.kind === b.kind && a.children == b.children
     else
@@ -657,6 +699,8 @@ function Finch.getresults(node::IndexNode)
     elseif node.kind === assign
         Finch.getresults(node.lhs)
     elseif node.kind === pass
+        return node.tnss
+    elseif node.kind === retuple
         return node.tnss
     else
         error("unimplemented")
